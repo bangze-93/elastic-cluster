@@ -1,0 +1,24 @@
+cluster.name: {{ elastic_cluster_name }}
+node.name: {{ inventory_hostname }}
+node.master: true
+node.data: true
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+bootstrap.memory_lock: true
+http.port: 9200
+network.host: 0.0.0.0
+network.publish_host: {{ hostvars['elastic02']['ansible_host'] }}
+discovery.seed_hosts:
+  - {{ hostvars['elastic01']['ansible_host'] }}
+  - {{ hostvars['elastic03']['ansible_host'] }}
+cluster.initial_master_nodes:
+  - {{ hostvars['elastic01']['ansible_host'] }}
+  - {{ hostvars['elastic02']['ansible_host'] }}
+  - {{ hostvars['elastic03']['ansible_host'] }}
+xpack.monitoring.collection.enabled: true
+xpack.security.enabled: true
+xpack.security.transport.ssl.enabled: true
+xpack.security.transport.ssl.verification_mode: certificate 
+xpack.security.transport.ssl.certificate_authorities: /usr/share/elasticsearch/config/certs/ca.crt
+xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/certs/es.crt
+xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/certs/es.key

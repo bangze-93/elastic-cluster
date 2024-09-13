@@ -1,0 +1,31 @@
+---
+- block:
+
+    - name: Create volume directory for Kibana
+      ansible.builtin.file:
+        path: "{{ kibana_vol_dir }}/{{ item }}"
+        state: directory
+        mode: 0775
+      loop: 
+        - data
+        - config
+    
+    - name: Configure kibana.yml config file
+      ansible.builtin.template:
+        src: kibana-config.yml.j2
+        dest: "{{ kibana_vol_dir }}/config/kibana.yml"
+
+    - name: Configure kibana.yaml compose file
+      ansible.builtin.template:
+        src: kibana-compose.yaml.j2
+        dest: "{{ kibana_vol_dir }}/kibana.yaml"
+
+    - name: Create Kibana container
+      community.docker.docker_compose_v2:
+        project_src: "{{ kibana_vol_dir }}"
+        files: kibana.yaml
+        project_name: kibana
+        state: present
+         
+  when: inventory_hostname == 'kibana01'
+...

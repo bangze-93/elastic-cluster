@@ -1,0 +1,12 @@
+[elastic]
+elastic01 ansible_host=192.168.60.31
+elastic02 ansible_host=192.168.60.32
+elastic03 ansible_host=192.168.60.33
+
+[kibana]
+kibana01 ansible_host=192.168.60.34
+
+[all:vars]
+ansible_user=user
+ansible_ssh_pass=P4s5word
+ansible_become_password=P4s5word

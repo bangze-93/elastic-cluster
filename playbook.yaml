@@ -1,0 +1,27 @@
+---
+- name: Elastic Cluster
+  hosts: all
+  become: true
+  become_method: sudo
+  vars_files:
+    - vars/all.yaml
+  tasks:
+    - name: Update and upgrade packages
+      ansible.builtin.apt:
+        upgrade: 'yes'
+        state: present
+        update_cache: true
+        cache_valid_time: 86400
+
+    - name: Install Docker
+      ansible.builtin.import_tasks:
+        file: tasks/docker.yaml
+
+    - name: Install Elastic
+      ansible.builtin.import_tasks:
+        file: tasks/elastic.yaml
+
+    - name: Install Kibana
+      ansible.builtin.import_tasks:
+        file: tasks/kibana.yaml
+...

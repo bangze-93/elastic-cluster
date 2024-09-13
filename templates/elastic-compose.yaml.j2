@@ -1,0 +1,29 @@
+services:
+  elastic:
+    image: elasticsearch:{{ elastic_version }}
+    container_name: elastic
+    hostname: {{ inventory_hostname }}
+    restart: always
+    ports:
+      - '0.0.0.0:9200:9200'
+      - '0.0.0.0:9300:9300'
+    volumes:
+      - "{{ elastic_vol_dir }}/data:/usr/share/elasticsearch/data"
+      - "{{ elastic_vol_dir }}/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml"
+      - "{{ elastic_vol_dir }}/config/customjvm.options:/usr/share/elasticsearch/config/jvm.options.d/customjvm.options"
+      - "{{ elastic_vol_dir }}/config/certs:/usr/share/elasticsearch/config/certs"
+      - "{{ elastic_vol_dir }}/logs:/usr/share/elasticsearch/logs"
+      - "{{ elastic_vol_dir }}/plugins:/usr/share/elasticsearch/plugins" 
+    environment:
+      ELASTIC_PASSWORD: "{{ elastic_pass }}"
+      TZ: "{{ time_zone }}"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65535
+        hard: 65535
+networks:
+  default:
+    name: elastic

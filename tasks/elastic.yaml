@@ -1,0 +1,148 @@
+---
+- block:
+    - name: Create volume directory for Elastic
+      ansible.builtin.file:
+        path: "{{ elastic_vol_dir }}/{{ item }}"
+        state: directory
+        mode: 0775
+      loop:
+        - data
+        - config/certs
+        - logs
+        - plugins
+
+    - name: Configure Elastic compose file
+      ansible.builtin.template:
+        src: elastic-compose.yaml.j2
+        dest: "{{ elastic_vol_dir }}/elastic.yaml"
+        mode: 0644
+
+    - name: Configure customjvm.options
+      ansible.builtin.template:
+        src: customjvm.options.j2
+        dest: "{{ elastic_vol_dir }}/config/customjvm.options"
+
+    - name: Set vm.max_map_count in kernel setting 
+      ansible.builtin.copy:
+        src: elastic.conf
+        dest: /etc/sysctl.d/elastic.conf
+        mode: 0644
+      register: sysctl
+
+    - name: Reload sysctl
+      ansible.builtin.command: 
+        cmd: sysctl --system
+      when: sysctl.changed
+
+  when: inventory_hostname in groups['elastic']
+
+- block:
+
+    - name: Configure elasticsearch.yml for Elastic1
+      ansible.builtin.template:
+        src: elastic1-config.yml.j2
+        dest: "{{ elastic_vol_dir }}/config/elasticsearch.yml"
+
+    - name: Generate SSL/TLS Certificate on Elastic1
+      ansible.builtin.shell:
+        cmd: |
+          openssl genpkey -algorithm RSA -out ca.key
+          openssl req -x509 -new -nodes -key ca.key -days 3650 -out ca.crt -subj "/CN=es-cluster"
+          openssl genpkey -algorithm RSA -out es.key
+          openssl req -new -key es.key -out es.csr -subj "/CN=es-cluster"
+          openssl x509 -req -in es.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out es.crt -days 3650
+        chdir: "{{ elastic_vol_dir }}/config/certs"
+
+    - name: Get ca.crt and ca.key from Elastic1
+      ansible.builtin.fetch:
+        src: "{{ elastic_vol_dir }}/config/certs/{{ item }}"
+        dest: "{{ playbook_dir }}/files/"
+        flat: true
+      loop:
+        - ca.crt
+        - ca.key
+
+  throttle: 1
+  when: inventory_hostname == 'elastic01'
+
+
+- name: Configure elasticsearch.yml for Elastic2
+  ansible.builtin.template:
+    src: elastic2-config.yml.j2
+    dest: "{{ elastic_vol_dir }}/config/elasticsearch.yml"
+  when: inventory_hostname == 'elastic02'
+
+- name: Configure elasticsearch.yml for Elastic3
+  ansible.builtin.template:
+    src: elastic3-config.yml.j2
+    dest: "{{ elastic_vol_dir }}/config/elasticsearch.yml"
+  when: inventory_hostname == 'elastic03'
+
+- block:
+
+    - name: Copy ca.crt and ca.key to another Elastic nodes
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ elastic_vol_dir }}/config/certs/"
+      loop:
+        - ca.crt
+        - ca.key
+
+    - name: Change permission ca.crt
+      ansible.builtin.file:
+        path: "{{ elastic_vol_dir }}/config/certs/ca.crt"
+        state: file
+        mode: 0644
+
+    - name: Generate SSL/TLS Certificate on another Elastic nodes
+      ansible.builtin.shell:
+        cmd: |
+          openssl genpkey -algorithm RSA -out es.key
+          openssl req -new -key es.key -out es.csr -subj "/CN=es-cluster"
+          openssl x509 -req -in es.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out es.crt -days 3650
+        chdir: "{{ elastic_vol_dir }}/config/certs"
+  
+  throttle: 1  
+  when: inventory_hostname in groups['elastic']  and inventory_hostname != 'elastic01'
+
+- name: Recursively change ownership of {{ elastic_vol_dir }} for Elastic
+  ansible.builtin.file:
+    path: "{{ elastic_vol_dir }}"
+    state: directory
+    recurse: yes
+    owner: 1000
+    group: 0
+  when: inventory_hostname in groups['elastic']
+
+- name: Create Elastic container on Elastic01
+  community.docker.docker_compose_v2:
+    project_src: "{{ elastic_vol_dir }}"
+    files: elastic.yaml
+    project_name: elastic
+    state: present
+  when: inventory_hostname == 'elastic01'
+
+- name: Pause for 1 minute to prepare Elastic01
+  ansible.builtin.pause:
+    minutes: 1
+
+- name: Create Elastic container on Elastic02
+  community.docker.docker_compose_v2:
+    project_src: "{{ elastic_vol_dir }}"
+    files: elastic.yaml
+    project_name: elastic
+    state: present
+  when: inventory_hostname == 'elastic02'
+
+- name: Pause for 1 minute to prepare Elastic02
+  ansible.builtin.pause:
+    minutes: 1
+
+- name: Create Elastic container on Elastic03
+  community.docker.docker_compose_v2:
+    project_src: "{{ elastic_vol_dir }}"
+    files: elastic.yaml
+    project_name: elastic
+    state: present
+  when: inventory_hostname == 'elastic03'
+...

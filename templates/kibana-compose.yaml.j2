@@ -1,0 +1,16 @@
+services:
+  kibana:
+    image: kibana:{{ kibana_version }}
+    container_name: kibana
+    hostname: kibana
+    restart: always
+    ports:
+      - '0.0.0.0:5601:5601'
+    volumes:
+      - {{ kibana_vol_dir }}/config/kibana.yml:/usr/share/kibana/config/kibana.yml
+      - {{ kibana_vol_dir }}/data:/usr/share/kibana/data
+    environment:
+      TZ: "{{ time_zone }}"
+networks:
+  default:
+    name: kibana

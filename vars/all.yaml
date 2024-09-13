@@ -1,0 +1,10 @@
+---
+elastic_cluster_name: ES-Cluster
+elastic_version: 7.17.24
+elastic_pass: s0U+#]>0CX6)36+n
+elastic_vol_dir: /opt/elastic
+jvm_size: 1g
+kibana_version: "{{ elastic_version }}"
+kibana_vol_dir: /opt/kibana
+time_zone: Asia/Jakarta
+...
